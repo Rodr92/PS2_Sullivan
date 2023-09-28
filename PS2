@@ -18,16 +18,16 @@ Poverty <- Poverty |>
 # read data from Human Mortality Data Base
 
 LtMales <-readHMDweb(CNTRY="USA",item="mltper_5x1",
-                      username = "gonzalezvela@wisc.edu",
-                      password = "Tralala123!")
+                      username = "xxxxxxxxxx",
+                      password = "xxxxxxxx")
 
 LtMales <- LtMales |> 
   filter(Year == 2004)
 
 
 LtFemales <-readHMDweb(CNTRY="USA",item="fltper_5x1",
-                   username = "gonzalezvela@wisc.edu",
-                   password = "Tralala123!")
+                   username = "xxxxxxxxxx",
+                   password = "xxxxxxxxxx")
 
 LtFemales <- LtFemales |> 
   filter(Year == 2004)
