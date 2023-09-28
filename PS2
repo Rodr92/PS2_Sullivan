@@ -1,0 +1,215 @@
+#SOC 756 PS2: Sullivan Method
+# to clean everything rm(list=ls())
+
+
+#set working directory
+setwd("C:/Users/rodgo/Desktop/PhD/Ramos/SOC 756/ps2")
+
+install.packages("tidyverse")
+install.packages("HMDHFDplus")
+
+library(tidyverse)
+library(HMDHFDplus)
+
+Poverty <- read_csv("ps2data_2023.csv")
+Poverty <- Poverty |>
+  rename(prop_poverty = "proportion_poverty_1-n_x")
+
+# read data from Human Mortality Data Base
+
+LtMales <-readHMDweb(CNTRY="USA",item="mltper_5x1",
+                      username = "gonzalezvela@wisc.edu",
+                      password = "Tralala123!")
+
+LtMales <- LtMales |> 
+  filter(Year == 2004)
+
+
+LtFemales <-readHMDweb(CNTRY="USA",item="fltper_5x1",
+                   username = "gonzalezvela@wisc.edu",
+                   password = "Tralala123!")
+
+LtFemales <- LtFemales |> 
+  filter(Year == 2004)
+
+#create vector age to add it to Poverty dataframe
+
+Age <- LtMales$Age
+
+
+#vector i for loops
+
+i <- 1:24
+
+#Create dataframe for men
+
+Poverty_males <- Poverty |> 
+  filter(sex == "male") |>
+  mutate(Age = Age)
+
+Ltpm <- right_join(Poverty_males, LtMales, by = "Age")
+  
+# Create dataframe for women 
+
+Poverty_females <- Poverty |> 
+  filter(sex == "female") |>
+  mutate(Age = Age)
+
+Ltpf <- right_join(Poverty_females, LtFemales, by = "Age")
+  
+# Years lived in poverty
+
+
+# nLx in poverty
+Ltpm$Lxp <- (Ltpm$Lx * Ltpm$prop_poverty) 
+
+
+
+#Txp corregido
+
+Ltpm$i <- 1:24
+
+#Txp
+Ltpm$Txp <- numeric(length(Ltpm$Lx))
+
+for (i in 1:length(Ltpm$Lxp)) {
+  Ltpm$Txp[i] <- sum(Ltpm$Lxp[i:length(Ltpm$Lxp)])
+}
+
+#Life expectancy in poverty exp
+
+Ltpm$exp <- Ltpm$Txp / Ltpm$lx
+
+# Var of poverty prevalence
+
+Ltpm$Varp <- (Ltpm$prop_poverty * (1-Ltpm$prop_poverty)) / Ltpm$number_sampled_N  
+
+# For var exp I need Lx^2 * Varp
+
+Ltpm$LxVarp <- Ltpm$Lx^2 * Ltpm$Varp
+
+# need lx^2
+
+Ltpm$lx2 <- Ltpm$lx^2
+
+Ltpm$Txp <- numeric(length(Ltpm$Lx))
+
+
+#Sum of Lx^2 * Varp from x to the end of the table
+
+Ltpm$Suma <- numeric(length(Ltpm$Lx))
+
+for (i in 1:length(Ltpm$Lx)) {
+  Ltpm$Suma[i] <- sum(Ltpm$LxVarp[i:length(Ltpm$Lx)])
+}
+
+# Now I calculate Varexp
+
+Ltpm$varexp <- Ltpm$Suma / Ltpm$lx2
+
+
+################# Females ##################
+
+
+
+# Years lived in poverty
+# nLx in poverty
+Ltpf$Lxp <- (Ltpf$Lx * Ltpf$prop_poverty)
+
+
+#Txp corregido
+
+Ltpf$i <- 1:24
+
+#Txp
+Ltpf$Txp <- numeric(length(Ltpf$Lx))
+
+for (i in 1:length(Ltpm$Lxp)) {
+  Ltpf$Txp[i] <- sum(Ltpf$Lxp[i:length(Ltpm$Lxp)])
+}
+
+#Life expectancy in poverty exp
+
+Ltpf$exp <- Ltpf$Txp / Ltpf$lx
+
+# Var of poverty prevalence
+
+Ltpf$Varp <- (Ltpf$prop_poverty * (1-Ltpf$prop_poverty)) / Ltpf$number_sampled_N  
+
+# For var exp I need Lx^2 * Varp
+
+Ltpf$LxVarp <- Ltpf$Lx^2 * Ltpf$Varp
+
+# need lx^2
+
+Ltpf$lx2 <- Ltpf$lx^2
+
+Ltpf$Txp <- numeric(length(Ltpf$Lx))
+
+
+#Sum of Lx^2 * Varp from x to the end of the table
+
+Ltpf$Suma <- numeric(length(Ltpf$Lx))
+
+for (i in 1:length(Ltpf$Lx)) {
+  Ltpf$Suma[i] <- sum(Ltpf$LxVarp[i:length(Ltpf$Lx)])
+}
+
+# Now I calculate Varexp
+
+Ltpf$varexp <- Ltpf$Suma / Ltpf$lx2
+
+# create a data frame containing exp and varexp
+# First I change the name of variables form men
+
+names(Ltpm)[names(Ltpm) == "exp"] <- "expm"
+names(Ltpm)[names(Ltpm) == "varexp"] <- "varexpm"
+
+# Now change the name for women
+names(Ltpf)[names(Ltpf) == "exp"] <- "expf"
+names(Ltpf)[names(Ltpf) == "varexp"] <- "varexpf"
+
+
+# Now I create a new dataframe to calculate z scores
+
+differences <- bind_cols(
+  select(Ltpm, Age),
+  select(Ltpf, expf, varexpf),
+  select(Ltpm, expm, varexpm)
+  
+)
+
+#I calculate the difference in life expectancy
+
+differences$Sexgap <- differences$expf - differences$expm
+
+
+# calculate z scores
+
+differences$z <- (differences$expf - differences$expm) / (sqrt(differences$varexpm) + sqrt(differences$varexpf))
+
+# p-values
+
+differences$significant_0.05 <- differences$z > 1.96
+
+# Now I export the datafram to Excel
+
+install.packages("openxlsx")
+library(openxlsx)
+
+# Export differences.xls
+write.xlsx(differences, "differences.xlsx", rowNames = FALSE)
+
+
+# Some plots!
+
+ggplot() +
+  geom_line(data = Ltpf, aes(x = Age, y = prop_poverty, linetype = "Females")) +
+  geom_line(data = Ltpm, aes(x = Age, y = prop_poverty, linetype = "Males")) +
+  labs(
+    title = "Proportion in Poverty by Age",
+    x = "Age",
+    y = "Proportion in Poverty"
+  ) +
+  scale_linetype_manual(values = c("Females" = "solid", "Males" = "dashed")) +
+  theme_minimal()
