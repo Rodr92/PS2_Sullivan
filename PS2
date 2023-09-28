@@ -56,14 +56,16 @@ Poverty_females <- Poverty |>
   mutate(Age = Age)
 
 Ltpf <- right_join(Poverty_females, LtFemales, by = "Age")
-  
+
+
+
+###############################Males#########################
+
 # Years lived in poverty
 
 
 # nLx in poverty
 Ltpm$Lxp <- (Ltpm$Lx * Ltpm$prop_poverty) 
-
-
 
 #Txp corregido
 
